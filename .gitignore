@@ -23,3 +23,6 @@ azure.json
 
 # OSX trash
 .DS_Store
+
+.idea/
+_output/
