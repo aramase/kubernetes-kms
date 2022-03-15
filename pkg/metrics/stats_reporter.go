@@ -23,7 +23,9 @@ const (
 	// DecryptOperationTypeValue sets operation tag to "decrypt"
 	DecryptOperationTypeValue = "decrypt"
 	// GrpcOperationTypeValue sets operation tag to "grpc"
-	GrpcOperationTypeValue = "grpc"
+	GrpcOperationTypeValue       = "grpc"
+	KMSEncryptOperationTypeValue = "kms_encrypt"
+	KMSDecryptOperationTypeValue = "kms_decrypt"
 )
 
 var (

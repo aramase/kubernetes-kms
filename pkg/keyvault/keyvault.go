@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-package plugin
+package keyvault
 
 import (
 	"context"
@@ -40,8 +40,8 @@ type keyVaultClient struct {
 	azureEnvironment *azure.Environment
 }
 
-// NewKeyVaultClient returns a new key vault client to use for kms operations
-func newKeyVaultClient(config *config.AzureConfig, vaultName, keyName, keyVersion string, proxyMode bool, proxyAddress string, proxyPort int) (*keyVaultClient, error) {
+// NewClient returns a new key vault client to use for kms operations
+func NewClient(config *config.AzureConfig, vaultName, keyName, keyVersion string, proxyMode bool, proxyAddress string, proxyPort int) (*keyVaultClient, error) {
 	// Sanitize vaultName, keyName, keyVersion. (https://github.com/Azure/kubernetes-kms/issues/85)
 	vaultName = utils.SanitizeString(vaultName)
 	keyName = utils.SanitizeString(keyName)

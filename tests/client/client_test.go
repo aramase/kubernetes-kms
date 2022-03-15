@@ -7,13 +7,14 @@ import (
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	k8spb "k8s.io/apiserver/pkg/storage/value/encrypt/envelope/v1beta1"
+
+	k8spb "github.com/Azure/kubernetes-kms/pkg/v2alpha1"
 )
 
 const (
 	netProtocol      = "unix"
 	pathToUnixSocket = "/opt/azurekms.sock"
-	version          = "v1beta1"
+	version          = "v2alpha1"
 )
 
 var (
@@ -76,7 +77,7 @@ func TestVersion(t *testing.T) {
 		want     string
 		expected string
 	}{
-		{"v1beta1", "v1beta1", "v1beta1"},
+		{"v2alpha1", "v2alpha1", "v2alpha1"},
 	}
 
 	teardownTestCase := setupTestCase(t)

@@ -14,9 +14,9 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
-	pb "k8s.io/apiserver/pkg/storage/value/encrypt/envelope/v1beta1"
 	"k8s.io/klog/v2"
 
+	pb "github.com/Azure/kubernetes-kms/pkg/v2alpha1"
 	"github.com/Azure/kubernetes-kms/pkg/version"
 )
 
@@ -62,12 +62,12 @@ func (h *HealthZ) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	// check the configured keyvault, key, key version and permissions are still
 	// valid to encrypt and decrypt with test data.
-	enc, err := h.KMSServer.Encrypt(ctx, &pb.EncryptRequest{Plain: []byte(healthCheckPlainText)})
+	enc, err := h.KMSServer.Encrypt(ctx, &pb.EncryptRequest{Plain: []byte(healthCheckPlainText), Uid: "local"})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	dec, err := h.KMSServer.Decrypt(ctx, &pb.DecryptRequest{Cipher: enc.Cipher})
+	dec, err := h.KMSServer.Decrypt(ctx, &pb.DecryptRequest{Cipher: enc.Cipher, Uid: "local", Key: enc.Key})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

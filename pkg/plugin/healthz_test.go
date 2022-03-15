@@ -17,11 +17,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Azure/kubernetes-kms/pkg/encryption/aes"
+	"github.com/Azure/kubernetes-kms/pkg/kek"
 	"github.com/Azure/kubernetes-kms/pkg/metrics"
 	mockkeyvault "github.com/Azure/kubernetes-kms/pkg/plugin/mock_keyvault"
+	pb "github.com/Azure/kubernetes-kms/pkg/v2alpha1"
 
 	"google.golang.org/grpc"
-	pb "k8s.io/apiserver/pkg/storage/value/encrypt/envelope/v1beta1"
 )
 
 func TestServe(t *testing.T) {
@@ -138,9 +140,13 @@ func setupFakeKMSServer(socketPath string) (*KeyManagementServiceServer, *mockke
 		return nil, nil, err
 	}
 	kvClient := &mockkeyvault.KeyVaultClient{}
+	reporter := metrics.NewStatsReporter()
+	kekService, _ := kek.NewKEKService(kvClient, reporter)
+	es, _ := aes.NewAESCBCService(kekService)
+
 	fakeKMSServer := &KeyManagementServiceServer{
-		kvClient: kvClient,
-		reporter: metrics.NewStatsReporter(),
+		service:  es,
+		reporter: reporter,
 	}
 	s := grpc.NewServer()
 	pb.RegisterKeyManagementServiceServer(s, fakeKMSServer)

@@ -19,10 +19,10 @@ import (
 	"github.com/Azure/kubernetes-kms/pkg/metrics"
 	"github.com/Azure/kubernetes-kms/pkg/plugin"
 	"github.com/Azure/kubernetes-kms/pkg/utils"
+	pb "github.com/Azure/kubernetes-kms/pkg/v2alpha1"
 	"github.com/Azure/kubernetes-kms/pkg/version"
 
 	"google.golang.org/grpc"
-	pb "k8s.io/apiserver/pkg/storage/value/encrypt/envelope/v1beta1"
 	"k8s.io/component-base/config"
 	json "k8s.io/component-base/logs/json"
 	"k8s.io/klog/v2"

@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-package plugin
+package keyvault
 
 import (
 	"strings"
@@ -96,7 +96,7 @@ func TestNewKeyVaultClient(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			kvClient, err := newKeyVaultClient(test.config, test.vaultName, test.keyName, test.keyVersion, test.proxyMode, test.proxyAddress, test.proxyPort)
+			kvClient, err := NewClient(test.config, test.vaultName, test.keyName, test.keyVersion, test.proxyMode, test.proxyAddress, test.proxyPort)
 			if test.expectedErr && err == nil || !test.expectedErr && err != nil {
 				t.Fatalf("expected error: %v, got error: %v", test.expectedErr, err)
 			}

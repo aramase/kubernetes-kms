@@ -9,10 +9,6 @@ set -o pipefail
 cat <<EOF | kind create cluster --retain --image kindest/node:"${KUBERNETES_VERSION}" --name "${KIND_CLUSTER_NAME}" --wait 2m --config=-
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
-containerdConfigPatches:
-- |-
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:${REGISTRY_PORT}"]
-    endpoint = ["http://${REGISTRY_NAME}:${REGISTRY_PORT}"]
 nodes:
 - role: control-plane
   extraMounts:
@@ -32,6 +28,7 @@ nodes:
     - |
       kind: ClusterConfiguration
       apiServer:
+        image: aramase/kube-apiserver-amd64:kms-v2alpha1.00
         extraArgs:
           encryption-provider-config: "/etc/kubernetes/encryption-config.yaml"
         extraVolumes:

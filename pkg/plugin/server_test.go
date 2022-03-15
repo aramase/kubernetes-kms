@@ -10,10 +10,11 @@ import (
 	"fmt"
 	"testing"
 
-	k8spb "k8s.io/apiserver/pkg/storage/value/encrypt/envelope/v1beta1"
-
+	"github.com/Azure/kubernetes-kms/pkg/encryption/aes"
+	"github.com/Azure/kubernetes-kms/pkg/kek"
 	"github.com/Azure/kubernetes-kms/pkg/metrics"
 	mockkeyvault "github.com/Azure/kubernetes-kms/pkg/plugin/mock_keyvault"
+	k8spb "github.com/Azure/kubernetes-kms/pkg/v2alpha1"
 	"github.com/Azure/kubernetes-kms/pkg/version"
 )
 
@@ -42,10 +43,13 @@ func TestEncrypt(t *testing.T) {
 		t.Run(test.desc, func(t *testing.T) {
 			kvClient := &mockkeyvault.KeyVaultClient{}
 			kvClient.SetEncryptResponse(test.output, test.err)
+			reporter := metrics.NewStatsReporter()
+			kekService, _ := kek.NewKEKService(kvClient, reporter)
+			es, _ := aes.NewAESCBCService(kekService)
 
 			kmsServer := KeyManagementServiceServer{
-				kvClient: kvClient,
-				reporter: metrics.NewStatsReporter(),
+				service:  es,
+				reporter: reporter,
 			}
 
 			out, err := kmsServer.Encrypt(context.TODO(), &k8spb.EncryptRequest{
@@ -86,10 +90,13 @@ func TestDecrypt(t *testing.T) {
 		t.Run(test.desc, func(t *testing.T) {
 			kvClient := &mockkeyvault.KeyVaultClient{}
 			kvClient.SetDecryptResponse(test.output, test.err)
+			reporter := metrics.NewStatsReporter()
+			kekService, _ := kek.NewKEKService(kvClient, reporter)
+			es, _ := aes.NewAESCBCService(kekService)
 
 			kmsServer := KeyManagementServiceServer{
-				kvClient: kvClient,
-				reporter: metrics.NewStatsReporter(),
+				service:  es,
+				reporter: reporter,
 			}
 
 			out, err := kmsServer.Decrypt(context.TODO(), &k8spb.DecryptRequest{

@@ -13,7 +13,7 @@ var (
 	GitCommit string
 	// BuildVersion is the version of the KMS binary
 	BuildVersion string
-	APIVersion   = "v1beta1"
+	APIVersion   = "v2alpha1"
 	Runtime      = "Microsoft AzureKMS"
 )
 

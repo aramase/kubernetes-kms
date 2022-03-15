@@ -55,7 +55,7 @@ func TestGetGRPCMethodName(t *testing.T) {
 	}{
 		{
 			name:           "With_Correct_Method_Name",
-			input:          "/v1beta1.KeyManagementService/Encrypt",
+			input:          "/v2alpha1.KeyManagementService/Encrypt",
 			expectedOutput: "encrypt",
 		},
 		{
