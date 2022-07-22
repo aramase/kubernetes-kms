@@ -11,9 +11,9 @@ import (
 
 	"github.com/Azure/kubernetes-kms/pkg/config"
 	"github.com/Azure/kubernetes-kms/pkg/metrics"
+	k8spb "github.com/Azure/kubernetes-kms/pkg/v2alpha1"
 	"github.com/Azure/kubernetes-kms/pkg/version"
 
-	k8spb "k8s.io/apiserver/pkg/storage/value/encrypt/envelope/v1beta1"
 	"k8s.io/klog/v2"
 )
 
@@ -51,11 +51,11 @@ func New(ctx context.Context, pc *Config) (*KeyManagementServiceServer, error) {
 }
 
 // Version of kms
-func (s *KeyManagementServiceServer) Version(ctx context.Context, request *k8spb.VersionRequest) (*k8spb.VersionResponse, error) {
-	return &k8spb.VersionResponse{
-		Version:        version.APIVersion,
-		RuntimeName:    version.Runtime,
-		RuntimeVersion: version.BuildVersion,
+func (s *KeyManagementServiceServer) Status(ctx context.Context, request *k8spb.StatusRequest) (*k8spb.StatusResponse, error) {
+	return &k8spb.StatusResponse{
+		Version: version.APIVersion,
+		Healthz: "ok",
+		KeyId:   s.kvClient.GetKeyID(),
 	}, nil
 }
 
@@ -75,13 +75,13 @@ func (s *KeyManagementServiceServer) Encrypt(ctx context.Context, request *k8spb
 	}()
 
 	klog.V(2).Info("encrypt request started")
-	cipher, err := s.kvClient.Encrypt(ctx, request.Plain)
+	ciphertext, err := s.kvClient.Encrypt(ctx, request.Plaintext)
 	if err != nil {
 		klog.ErrorS(err, "failed to encrypt")
 		return &k8spb.EncryptResponse{}, err
 	}
 	klog.V(2).Info("encrypt request complete")
-	return &k8spb.EncryptResponse{Cipher: cipher}, nil
+	return &k8spb.EncryptResponse{Ciphertext: ciphertext, KeyId: "kms-key-id", Annotations: map[string][]byte{"foo": []byte("bar")}}, nil
 }
 
 // Decrypt message
@@ -100,11 +100,11 @@ func (s *KeyManagementServiceServer) Decrypt(ctx context.Context, request *k8spb
 	}()
 
 	klog.V(2).Info("decrypt request started")
-	plain, err := s.kvClient.Decrypt(ctx, request.Cipher)
+	plaintext, err := s.kvClient.Decrypt(ctx, request.Ciphertext)
 	if err != nil {
 		klog.ErrorS(err, "failed to decrypt")
 		return &k8spb.DecryptResponse{}, err
 	}
 	klog.V(2).Info("decrypt request complete")
-	return &k8spb.DecryptResponse{Plain: plain}, nil
+	return &k8spb.DecryptResponse{Plaintext: plaintext}, nil
 }

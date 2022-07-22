@@ -7,7 +7,6 @@ package plugin
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/Azure/kubernetes-kms/pkg/auth"
@@ -137,12 +136,6 @@ func TestNewKeyVaultClient(t *testing.T) {
 			}
 			if kvClient == nil {
 				t.Fatalf("newKeyVaultClient() expected kv client to not be nil")
-			}
-			if !strings.Contains(kvClient.baseClient.UserAgent, "k8s-kms-keyvault") {
-				t.Fatalf("newKeyVaultClient() expected k8s-kms-keyvault user agent")
-			}
-			if kvClient.vaultURL != test.expectedVaultURL {
-				t.Fatalf("expected vault URL: %v, got vault URL: %v", test.expectedVaultURL, kvClient.vaultURL)
 			}
 		})
 	}

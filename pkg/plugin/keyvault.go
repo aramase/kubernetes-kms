@@ -28,6 +28,7 @@ import (
 type Client interface {
 	Encrypt(ctx context.Context, cipher []byte) ([]byte, error)
 	Decrypt(ctx context.Context, plain []byte) ([]byte, error)
+	GetKeyID() string
 }
 
 type keyVaultClient struct {
@@ -47,7 +48,7 @@ func newKeyVaultClient(
 	proxyMode bool,
 	proxyAddress string,
 	proxyPort int,
-	managedHSM bool) (*keyVaultClient, error) {
+	managedHSM bool) (Client, error) {
 	// Sanitize vaultName, keyName, keyVersion. (https://github.com/Azure/kubernetes-kms/issues/85)
 	vaultName = utils.SanitizeString(vaultName)
 	keyName = utils.SanitizeString(keyName)
@@ -136,6 +137,10 @@ func (kvc *keyVaultClient) Decrypt(ctx context.Context, plain []byte) ([]byte, e
 		return nil, fmt.Errorf("failed to base64 decode result, error: %+v", err)
 	}
 	return bytes, nil
+}
+
+func (kvc *keyVaultClient) GetKeyID() string {
+	return kvc.keyVersion
 }
 
 func getVaultURL(vaultName string, managedHSM bool, env *azure.Environment) (vaultURL *string, err error) {

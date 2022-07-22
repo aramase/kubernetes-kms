@@ -19,9 +19,9 @@ import (
 
 	"github.com/Azure/kubernetes-kms/pkg/metrics"
 	mockkeyvault "github.com/Azure/kubernetes-kms/pkg/plugin/mock_keyvault"
+	pb "github.com/Azure/kubernetes-kms/pkg/v2alpha1"
 
 	"google.golang.org/grpc"
-	pb "k8s.io/apiserver/pkg/storage/value/encrypt/envelope/v1beta1"
 )
 
 func TestServe(t *testing.T) {
