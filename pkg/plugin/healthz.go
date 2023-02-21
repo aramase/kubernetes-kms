@@ -18,7 +18,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	pb "k8s.io/apiserver/pkg/storage/value/encrypt/envelope/v1beta1"
+	pb "k8s.io/apiserver/pkg/storage/value/encrypt/envelope/v2alpha1"
 	"k8s.io/klog/v2"
 )
 
@@ -70,17 +70,17 @@ func (h *HealthZ) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	// check the configured keyvault, key, key version and permissions are still
 	// valid to encrypt and decrypt with test data.
-	enc, err := h.KMSServer.Encrypt(ctx, &pb.EncryptRequest{Plain: []byte(healthCheckPlainText)})
+	enc, err := h.KMSServer.Encrypt(ctx, &pb.EncryptRequest{Plaintext: []byte(healthCheckPlainText)})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	dec, err := h.KMSServer.Decrypt(ctx, &pb.DecryptRequest{Cipher: enc.Cipher})
+	dec, err := h.KMSServer.Decrypt(ctx, &pb.DecryptRequest{Ciphertext: enc.Ciphertext})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if string(dec.Plain) != healthCheckPlainText {
+	if string(dec.Plaintext) != healthCheckPlainText {
 		http.Error(w, "plain text mismatch after decryption", http.StatusInternalServerError)
 		return
 	}
@@ -92,11 +92,11 @@ func (h *HealthZ) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // checkRPC initiates a grpc request to validate the socket is responding
 // sends a KMS VersionRequest and checks if the VersionResponse is valid.
 func (h *HealthZ) checkRPC(ctx context.Context, client pb.KeyManagementServiceClient) error {
-	v, err := client.Version(ctx, &pb.VersionRequest{})
+	v, err := client.Status(ctx, &pb.StatusRequest{})
 	if err != nil {
 		return err
 	}
-	if v.Version != version.APIVersion || v.RuntimeName != version.Runtime || v.RuntimeVersion != version.BuildVersion {
+	if v.Version != version.APIVersion {
 		return fmt.Errorf("failed to get correct version response")
 	}
 	return nil

@@ -11,15 +11,16 @@ import (
 
 	"github.com/Azure/kubernetes-kms/pkg/config"
 	"github.com/Azure/kubernetes-kms/pkg/metrics"
-	"github.com/Azure/kubernetes-kms/pkg/version"
 
-	k8spb "k8s.io/apiserver/pkg/storage/value/encrypt/envelope/v1beta1"
+	k8spb "k8s.io/apiserver/pkg/storage/value/encrypt/envelope/v2alpha1"
 	"k8s.io/klog/v2"
+	"k8s.io/kms/encryption"
+	"k8s.io/kms/service"
 )
 
 // KeyManagementServiceServer is a gRPC server.
 type KeyManagementServiceServer struct {
-	kvClient Client
+	client   *encryption.LocalKEKService
 	reporter metrics.StatsReporter
 }
 
@@ -44,18 +45,22 @@ func New(ctx context.Context, pc *Config) (*KeyManagementServiceServer, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return &KeyManagementServiceServer{
-		kvClient: kvClient,
+		client:   encryption.NewLocalKEKService(kvClient),
 		reporter: metrics.NewStatsReporter(),
 	}, nil
 }
 
-// Version of kms
-func (s *KeyManagementServiceServer) Version(ctx context.Context, request *k8spb.VersionRequest) (*k8spb.VersionResponse, error) {
-	return &k8spb.VersionResponse{
-		Version:        version.APIVersion,
-		RuntimeName:    version.Runtime,
-		RuntimeVersion: version.BuildVersion,
+func (s *KeyManagementServiceServer) Status(ctx context.Context, request *k8spb.StatusRequest) (*k8spb.StatusResponse, error) {
+	resp, err := s.client.Status(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &k8spb.StatusResponse{
+		Version: resp.Version,
+		Healthz: resp.Healthz,
+		KeyId:   resp.KeyID,
 	}, nil
 }
 
@@ -74,14 +79,18 @@ func (s *KeyManagementServiceServer) Encrypt(ctx context.Context, request *k8spb
 		s.reporter.ReportRequest(ctx, metrics.EncryptOperationTypeValue, status, time.Since(start).Seconds(), errors)
 	}()
 
-	klog.V(2).Info("encrypt request started")
-	cipher, err := s.kvClient.Encrypt(ctx, request.Plain)
+	klog.V(2).InfoS("encrypt request started", "uid", request.Uid)
+	resp, err := s.client.Encrypt(ctx, request.Uid, request.Plaintext)
 	if err != nil {
-		klog.ErrorS(err, "failed to encrypt")
+		klog.ErrorS(err, "failed to encrypt", "uid", request.Uid)
 		return &k8spb.EncryptResponse{}, err
 	}
-	klog.V(2).Info("encrypt request complete")
-	return &k8spb.EncryptResponse{Cipher: cipher}, nil
+	klog.V(2).InfoS("encrypt request complete", "uid", request.Uid)
+	return &k8spb.EncryptResponse{
+		Ciphertext:  resp.Ciphertext,
+		KeyId:       resp.KeyID,
+		Annotations: resp.Annotations,
+	}, nil
 }
 
 // Decrypt message
@@ -99,12 +108,17 @@ func (s *KeyManagementServiceServer) Decrypt(ctx context.Context, request *k8spb
 		s.reporter.ReportRequest(ctx, metrics.DecryptOperationTypeValue, status, time.Since(start).Seconds(), errors)
 	}()
 
-	klog.V(2).Info("decrypt request started")
-	plain, err := s.kvClient.Decrypt(ctx, request.Cipher)
+	klog.V(2).InfoS("decrypt request started", "uid", request.Uid)
+	req := &service.DecryptRequest{
+		Ciphertext:  request.Ciphertext,
+		KeyID:       request.KeyId,
+		Annotations: request.Annotations,
+	}
+	plaintext, err := s.client.Decrypt(ctx, request.Uid, req)
 	if err != nil {
-		klog.ErrorS(err, "failed to decrypt")
+		klog.ErrorS(err, "failed to decrypt", "uid", request.Uid)
 		return &k8spb.DecryptResponse{}, err
 	}
-	klog.V(2).Info("decrypt request complete")
-	return &k8spb.DecryptResponse{Plain: plain}, nil
+	klog.V(2).Info("decrypt request complete", "uid", request.Uid)
+	return &k8spb.DecryptResponse{Plaintext: plaintext}, nil
 }

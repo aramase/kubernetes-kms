@@ -22,13 +22,10 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"k8s.io/klog/v2"
+	"k8s.io/kms/service"
 )
 
-// Client interface for interacting with Keyvault
-type Client interface {
-	Encrypt(ctx context.Context, cipher []byte) ([]byte, error)
-	Decrypt(ctx context.Context, plain []byte) ([]byte, error)
-}
+var _ service.Service = &keyVaultClient{}
 
 type keyVaultClient struct {
 	baseClient       kv.BaseClient
@@ -38,6 +35,7 @@ type keyVaultClient struct {
 	keyVersion       string
 	vaultURL         string
 	azureEnvironment *azure.Environment
+	keyID            string
 }
 
 // NewKeyVaultClient returns a new key vault client to use for kms operations
@@ -47,7 +45,7 @@ func newKeyVaultClient(
 	proxyMode bool,
 	proxyAddress string,
 	proxyPort int,
-	managedHSM bool) (*keyVaultClient, error) {
+	managedHSM bool) (service.Service, error) {
 	// Sanitize vaultName, keyName, keyVersion. (https://github.com/Azure/kubernetes-kms/issues/85)
 	vaultName = utils.SanitizeString(vaultName)
 	keyName = utils.SanitizeString(keyName)
@@ -101,12 +99,13 @@ func newKeyVaultClient(
 		keyVersion:       keyVersion,
 		vaultURL:         *vaultURL,
 		azureEnvironment: env,
+		keyID:            fmt.Sprintf("%s/keys/%s/%s", *vaultURL, keyName, keyVersion),
 	}
 	return client, nil
 }
 
-func (kvc *keyVaultClient) Encrypt(ctx context.Context, cipher []byte) ([]byte, error) {
-	value := base64.RawURLEncoding.EncodeToString(cipher)
+func (kvc *keyVaultClient) Encrypt(ctx context.Context, uid string, data []byte) (*service.EncryptResponse, error) {
+	value := base64.RawURLEncoding.EncodeToString(data)
 
 	params := kv.KeyOperationsParameters{
 		Algorithm: kv.RSA15,
@@ -114,13 +113,16 @@ func (kvc *keyVaultClient) Encrypt(ctx context.Context, cipher []byte) ([]byte, 
 	}
 	result, err := kvc.baseClient.Encrypt(ctx, kvc.vaultURL, kvc.keyName, kvc.keyVersion, params)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encrypt, error: %+v", err)
+		return nil, fmt.Errorf("failed to encrypt: %w", err)
 	}
-	return []byte(*result.Result), nil
+	return &service.EncryptResponse{
+		Ciphertext: []byte(*result.Result),
+		KeyID:      kvc.keyID,
+	}, nil
 }
 
-func (kvc *keyVaultClient) Decrypt(ctx context.Context, plain []byte) ([]byte, error) {
-	value := string(plain)
+func (kvc *keyVaultClient) Decrypt(ctx context.Context, uid string, req *service.DecryptRequest) ([]byte, error) {
+	value := string(req.Ciphertext)
 
 	params := kv.KeyOperationsParameters{
 		Algorithm: kv.RSA15,
@@ -129,13 +131,22 @@ func (kvc *keyVaultClient) Decrypt(ctx context.Context, plain []byte) ([]byte, e
 
 	result, err := kvc.baseClient.Decrypt(ctx, kvc.vaultURL, kvc.keyName, kvc.keyVersion, params)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decrypt, error: %+v", err)
+		return nil, fmt.Errorf("failed to decrypt: %w", err)
 	}
 	bytes, err := base64.RawURLEncoding.DecodeString(*result.Result)
 	if err != nil {
-		return nil, fmt.Errorf("failed to base64 decode result, error: %+v", err)
+		return nil, fmt.Errorf("failed to base64 decode result: %w", err)
 	}
 	return bytes, nil
+}
+
+func (kvc *keyVaultClient) Status(ctx context.Context) (*service.StatusResponse, error) {
+	// TODO(aramase): add more checks to verify that the key is accessible
+	return &service.StatusResponse{
+		Version: "v2alpha1",
+		Healthz: "ok",
+		KeyID:   kvc.keyID,
+	}, nil
 }
 
 func getVaultURL(vaultName string, managedHSM bool, env *azure.Environment) (vaultURL *string, err error) {

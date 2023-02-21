@@ -22,7 +22,7 @@ import (
 	"github.com/Azure/kubernetes-kms/pkg/version"
 
 	"google.golang.org/grpc"
-	pb "k8s.io/apiserver/pkg/storage/value/encrypt/envelope/v1beta1"
+	pb "k8s.io/apiserver/pkg/storage/value/encrypt/envelope/v2alpha1"
 	logsapi "k8s.io/component-base/logs/api/v1"
 	json "k8s.io/component-base/logs/json"
 	"k8s.io/klog/v2"
